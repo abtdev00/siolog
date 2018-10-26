@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>password setup</title>
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <script src="/js/common.js"></script>
+</head>
+
+<body>
+ <h2>パスワード設定</h2>
+ <div id="Account" class="tab_view">
+   パスワード：<input type="text" id="new_passwd">
+   <button type="button" id="passwd_change_btn">設定</button>
+ </div>
+</body>
+<script>
+$(function(){
+  $('#passwd_change_btn').on('click', function(){
+   let passwd = $('#new_passwd').val();
+   if(!passwd) return false;
+   $.post('/admin/passwd', {'passwd': passwd}, {}, 'json')
+   .done(function(data){
+    if(data.status == false){
+     alert('変更出来ませんでした');
+    }else{
+     alert('変更しました');
+     location.href = '/admin';
+    }
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+});
+</script>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>setup</title>
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <script src="/js/jquery-ui.min.js"></script>
+ <script src="/js/common.js"></script>
+ <link rel="stylesheet" href="/css/setup.css">
+</head>
+
+<body>
+<div id="head_box">
+ <div id="return_index">
+  <a href="/">←戻る</a>
+ </div>
+<ul id="menu_box">
+<li data-tab="#General">全般</li>
+<li data-tab="#Account">アカウント</li>
+<li data-tab="#Tag">タグ</li>
+<li data-tab="#Log">ログ管理</li>
+</ul>
+</div>
+ <div id="General" class="tab_view">
+  <fieldset id="view_url">
+   <legend>Viewショートカット</legend>
+   <span class="token_body"><%- view_url %></span>
+   <button type="button" class="token_change_btn" value="vtoken">変更</button>
+  </fieldset>
+  <fieldset id="login_url">
+   <legend>Loginショートカット</legend>
+   <span class="token_body"><%- login_url %></span>
+   <button type="button" class="token_change_btn" value="rtoken">変更</button>
+  </fieldset>
+  <fieldset id="app_token">
+   <legend>APPトークン</legend>
+   <span class="token_body"><%- access_token %></span>
+   <button type="button" class="token_change_btn" value="wtoken">変更</button>
+  </fieldset>
+  <fieldset id="secret">
+   <legend>シークレットKey</legend>
+   <span class="token_body"><%- secret_key %></span>
+   <button type="button" class="token_change_btn" value="secret">変更</button>
+  </fieldset>
+  <fieldset>
+   <legend>通信オプション</legend>
+   <input type="checkbox" id="secret_opt"<%if(secret_opt == 1){%> checked<%}%>>平文での通信を許可する
+   <button type="button" class="opt_change_btn" value="secret_opt">設定</button>
+  </fieldset>
+ </div>
+ <div id="Account" class="tab_view">
+  <fieldset id="passwd_change">
+   <legend>パスワード変更</legend>
+   新パスワード：<input type="text" id="new_passwd">
+   <button type="button" id="passwd_change_btn">パスワード変更</button>
+  </fieldset>
+  <fieldset id="id_delete">
+   <legend>アカウント削除</legend>
+   <button type="button" id="id_delete_btn">アカウント削除</button>
+  </fieldset>
+ </div>
+ <div id="Tag" class="tab_view">
+  <fieldset>
+   <legend>タグ表示オプション</legend>
+   <input type="checkbox" id="tag_opt"<%if(tag_opt == 1){%> checked<%}%>>ログ表示にタグを含める
+   <button type="button" class="opt_change_btn" value="tag_opt">設定</button>
+  </fieldset>
+  <div id="tag_table_field">
+   <button type="button" id="tag_move_btn">タグ順編集</button>
+   <div id="tag_table" class="list_flex">
+    <ul><li class="tag">タグ</li><li class="tag_name">タグ名</li><li class="tag_action">アクション</li></ul>
+     <% for (let items of tags){
+         if(!items) continue;
+     %>
+    <ul><li class="tag"><input type="text" class="tag" value="<%- items.tag %>"></li><li class="tag_name"><input type="text" class="tag_name" value="<%- items.tag_name %>"></li><li class="tag_action"><button type="button" class="tag_change_btn" value="<%- items.tid %>">更新</button><button type="button" class="tag_delete_btn" value="<%- items.tid %>">削除</button></li></ul>
+     <% } %>
+    <ul><li class="tag"><input type="text" class="tag" value=""></li><li class="tag_name"><input type="text" class="tag_name" value=""></li><li class="tag_action"><button type="button" class="tag_change_btn" value="">追加</button></li></ul>
+   </div>
+   <div id="tag_table_m" class="list_flex">
+    <ul class="unsortable"><li class="tag">タグ</li><li class="tag_name">タグ名</li></ul>
+     <% for (let items of tags){
+         if(!items) continue;
+     %>
+    <ul id="<%- items.tid %>"><li class="tag"><%- items.tag %></li><li class="tag_name"><%- items.tag_name %></li></ul>
+     <% } %>
+   </div>
+  </div>
+<script>
+$('#tag_table_m').sortable({
+ opacity: 0.6,
+ items: '> ul:not(.unsortable)'
+});
+$('#tag_move_btn').on('click',function(){
+ $(this).toggleClass('active');
+ if($(this).hasClass('active')){
+  $(this).text('タグ順反映');
+  $('#tag_table').toggle();
+  $('#tag_table_m').toggle();
+ }else{
+  //$(this).text('タグ順編集');
+  let list = $('#tag_table_m').sortable('toArray');
+console.log(list);
+  let send_data = {tag_list:list};
+  $.ajax({url:'/setup/tag_order', type:'PUT', data:JSON.stringify(send_data), contentType:'application/json', dataType:'json'})
+  .done(function(data){
+   let msg = '反映しました';
+   if(data.status == false) msg = '反映出来ませんでした';
+   alert(msg);
+   location.reload();
+  })
+  .fail(function(xhr, error){
+   console.log(xhr,error);
+   fn_jump_login();
+  });
+ }
+});
+</script>
+ </div>
+ <div id="Log" class="tab_view">
+  <fieldset id="log_export">
+   <legend>ログダウンロード</legend>
+   <button type="button" id="log_export_btn" onClick="location.href='/setup/log';">ログダウンロード</button>
+  </fieldset>
+  <fieldset id="log_delete">
+   <legend>ログ消去</legend>
+   <button type="button" id="log_delete_btn">ログ消去</button>
+  </fieldset>
+ </div>
+</body>
+<script>
+$(function(){
+  let active_tab = location.hash || '#General';
+  SetDisp(active_tab);
+
+  $('#menu_box li').on('click', function(){
+   active_tab = $(this).data('tab');
+   SetDisp(active_tab);
+   //location.hash=active_tab;
+   //location.href='/setup/'+active_tab;
+   location.replace(active_tab);
+   location.reload();
+  });
+
+  $('.token_change_btn').on('click', function(){
+   let action = $(this).val();
+   $.post('/setup/token', {'action': action}, {}, 'json')
+   .done(function(data){
+    let msg = '変更しました';
+    if(data.status == false) msg = '変更出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('.opt_change_btn').on('click', function(){
+   let action = $(this).val();
+   let checked = $('#' + action).prop('checked');
+   let send_data = {'action': action, 'data': +checked};
+console.log(send_data);
+   $.ajax({url:'/setup/opt', type:'PUT', data:send_data, dataType:'json'})
+   .done(function(data){
+    let msg = '設定しました';
+    if(data.status == false) msg = '設定出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('.tag_change_btn').on('click', function(){
+   const ul = $(this).closest('ul');
+   let tid = $(this).val();
+   let tag = ul.find('input.tag').val();
+   let tag_name = ul.find('input.tag_name').val();
+   let count = 0;
+
+   if(!tag) return false;
+   $.each($('input.tag'), function(){
+//console.log($(this).val());
+    if(tag == $(this).val()) count++;
+   });
+   if(count > 1){
+    alert('同じタグが登録されています');
+    return false;
+   }
+//console.log(tid,tag,tag_name);
+   $.post('/setup/tag', {'tid':tid, 'tag':tag, 'tag_name':tag_name},{},'json')
+   .done(function(data){
+//console.log(data);
+    let msg = '更新しました';
+    if(!tid) msg = '追加しました';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('.tag_delete_btn').on('click', function(){
+   if(!window.confirm('このタグを削除します、よろしいですか？')) return false;
+   let tid = $(this).val();
+   $.ajax({url:'/setup/tag/'+tid, type:'DELETE', dataType:'json'})
+   .done(function(data){
+    let msg = '削除しました';
+    if(data.status == false) msg = '削除出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#passwd_change_btn').on('click', function(){
+   let passwd = $('#new_passwd').val();
+   if(!passwd) return false;
+   $.post('/setup/passwd', {'passwd': passwd}, {}, 'json')
+   .done(function(data){
+    let msg = '変更しました';
+    if(data.status == false) msg = '変更出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#id_delete_btn').on('click', function(){
+   if(!window.confirm('アカウントを削除します、よろしいですか？')) return false;
+   //$.post('/setup/id_delete', {}, {}, 'json')
+   $.ajax({url:'/setup/user', type:'DELETE', dataType:'json'})
+   .done(function(data){
+    let msg = '削除しました';
+    if(data.status == false) msg = '削除出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#log_delete_btn').on('click', function(){
+   if(!window.confirm('ログを消去します、よろしいですか？')) return false;
+   $.ajax({url:'/setup/log', type:'DELETE', dataType:'json'})
+   .done(function(data){
+    let msg = '消去しました';
+    if(data.status == false) msg = '消去出来ませんでした';
+    alert(msg);
+    //location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+});
+function SetDisp(active_tab){
+ $('#menu_box li').removeClass('active');
+ $('#menu_box li[data-tab="'+active_tab+'"]').addClass('active');
+ $('div.tab_view').removeClass('active');
+ $(active_tab).addClass('active');
+}
+</script>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>admin setup</title>
+ <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+ <script src="/js/common.js"></script>
+ <link rel="stylesheet" href="/css/admin.css">
+</head>
+
+<body>
+<div id="head_box">
+<button id="logout" onClick="location.href='/logout';">ログアウト</button>
+<ul id="menu_box">
+<li data-tab="#Account">アカウント</li>
+<li data-tab="#System">システム</li>
+</ul>
+</div>
+ <div id="Account" class="tab_view">
+  <fieldset id="add_user">
+   <legend>ユーザー追加</legend>
+   ID：<input type="text" id="id">
+   パスワード：<input type="text" id="passwd">
+   <button type="button" id="add_btn">追加</button>
+  </fieldset>
+  <div id="tag_table_field">
+   <div id="tag_table" class="list_flex">
+    <ul><li class="id">ID</li><li class="last_date">最終Post</li><li class="action">アクション</li></ul>
+     <% for (let items of users){
+         if(!items) continue;
+     %>
+    <ul><li class="id"><%- items.id %></li><li class="last_date"><%- items.last_date %></li><li class="action"><button type="button" class="delete_btn" value="<%- items.uid %>">削除</button></li></ul>
+     <% } %>
+   </div>
+  </div>
+ </div>
+ <div id="System" class="tab_view">
+  <fieldset id="passwd_change">
+   <legend>パスワード変更</legend>
+   新パスワード：<input type="text" id="new_passwd">
+   <button type="button" id="passwd_change_btn">パスワード変更</button>
+  </fieldset>
+  <fieldset>
+   <legend>アカウント作成オプション</legend>
+   <input type="checkbox" id="account_opt"<%if(sys.account_opt == 1){%> checked<%}%>>ログイン画面でのアカウント作成を許可する
+   <button type="button" id="account_opt_btn">設定</button>
+  </fieldset>
+  <fieldset>
+   <%let chk=JSON.parse(sys.log_opt);%>
+   <legend>ログ制限</legend>
+   最大ログ保持日数：<input type="text" id="log_days" value="<%-chk.days%>">(0:無制限)<br>
+   チェック時刻(24H)：毎日
+   <input type="text" id="chk_h" value="<%-chk.h%>">：<input type="text" id="chk_m" value="<%-chk.m%>">
+   に実行<br>
+   <button type="button" id="log_opt_btn">設定</button>
+  </fieldset>
+ </div>
+</body>
+<script>
+$(function(){
+  let active_tab = location.hash || '#Account';
+  SetDisp(active_tab);
+
+  $('#menu_box li').on('click', function(){
+   active_tab = $(this).data('tab');
+   SetDisp(active_tab);
+   location.replace(active_tab);
+   location.reload();
+  });
+
+  $('#add_btn').on('click', function(){
+   const id = $('input#id').val();
+   const pw = $('input#passwd').val();
+   let count = 0;
+
+   if(!id || !pw) return false;
+   $.each($('#tag_table li.id'), function(){
+//console.log($(this).text());
+    if(id == $(this).text()) count++;
+   });
+   if(count){
+    alert('同じIDが登録されています');
+    return false;
+   }
+//console.log(id,pw);
+   $.post('/admin/user', {'id':id, 'pw':pw},{},'json')
+   .done(function(data){
+    let msg = '追加しました';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('.delete_btn').on('click', function(){
+   if(!window.confirm('このIDを削除します、よろしいですか？')) return false;
+   let uid = $(this).val();
+   $.ajax({url:'/admin/user/'+uid, type:'DELETE', dataType:'json'})
+   .done(function(data){
+    let msg = '削除しました';
+    if(data.status == false) msg = '削除出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#passwd_change_btn').on('click', function(){
+   let passwd = $('#new_passwd').val();
+   if(!passwd) return false;
+   $.post('/admin/passwd', {'passwd': passwd}, {}, 'json')
+   .done(function(data){
+    let msg = '変更しました';
+    if(data.status == false) msg = '変更出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#account_opt_btn').on('click', function(){
+   let checked = $('#account_opt').prop('checked');
+   let send_data = {'action': 'account_opt', 'data': +checked};
+console.log(send_data);
+   $.ajax({url:'/admin/opt', type:'PUT', data:send_data, dataType:'json'})
+   .done(function(data){
+    let msg = '設定しました';
+    if(data.status == false) msg = '設定出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+  $('#log_opt_btn').on('click', function(){
+   let log_days = $('#log_days').val();
+   let chk_h = $('#chk_h').val();
+   let chk_m = $('#chk_m').val();
+   if(log_days == '' || chk_h == '' || chk_m == '') return false;
+   if(!isFinite(log_days) || !isFinite(chk_h) || !isFinite(chk_m)) return false;
+   if(log_days < 0 || chk_h < 0 || chk_h > 23 || chk_m < 0 || chk_m > 59) return false;
+   let send_data = {'action':'log_opt', 'data':JSON.stringify({'days':log_days,'h':chk_h,'m':chk_m})};
+console.log(send_data);
+   $.ajax({url:'/admin/opt', type:'PUT', data:send_data, dataType:'json'})
+   .done(function(data){
+    let msg = '設定しました';
+    if(data.status == false) msg = '設定出来ませんでした';
+    alert(msg);
+    location.reload();
+   })
+   .fail(function(xhr, error){
+    console.log(xhr,error);
+    fn_jump_login();
+   });
+  });
+
+});
+function SetDisp(active_tab){
+ $('#menu_box li').removeClass('active');
+ $('#menu_box li[data-tab="'+active_tab+'"]').addClass('active');
+ $('div.tab_view').removeClass('active');
+ $(active_tab).addClass('active');
+}
+</script>
+</html>
