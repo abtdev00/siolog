@@ -74,6 +74,7 @@ console.log('error',error);
   <%  var min_id = item.lid;
      } %>
  </ul>
+ <p id="get_log_lnk">続きを読み込む</p>
 </body>
 <script>
 $(function(){
@@ -85,6 +86,7 @@ $(function(){
     if(!end_flag){
         if(!load_flag){
           load_flag = true;
+          $('#get_log_lnk').css({'display':'none'});
           $('#messages').append('<li class="loading">loading...</li>');
           setTimeout(function() {
             let url = '/get_log/';
@@ -114,10 +116,15 @@ $(function(){
                //line.push('<li>'+val.id+'['+val.rdate+'] '+val.msg+'</li>');
               });
               $('#messages').append(line);
+              $('#get_log_lnk').css({'display':'block'});
              });
           }, 1000);
         }
     }
+  });
+
+  $('#get_log_lnk').on('click', function(){
+   $(window).trigger('bottom');
   });
 
   $('#filter_toggle').on('click', function(){
@@ -146,6 +153,7 @@ $(function(){
     .always(function(){
      $('#messages li').remove();
      $('span#tag_txt').text(tag_txt);
+     $('#get_log_lnk').css({'display':'block'});
      end_flag = false;
     })
     .fail(function(xhr, error){

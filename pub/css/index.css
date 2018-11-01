@@ -13,6 +13,13 @@ ul#messages li:nth-child(odd){
 ul#messages li.loading{
  color: red;
 }
+p#get_log_lnk{
+ margin: 0;
+ text-align: center;
+ text-decoration: underline;
+ color: blue;
+ cursor: pointer;
+}
 
 div#f_menu{
  position: fixed;
